@@ -2,7 +2,7 @@
 - name: dummy
 - level: 1
 - class: Apprentice of Magic
-- hp_cur: 13
+- hp_cur: 10
 - hp_max: 13
 - mana_cur: 100
 - mana_max: 100
@@ -14,7 +14,7 @@
 - ac: 100/10
 - alignment: 0
 - played_days: 0
-- played_hours: 3
+- played_hours: 4
 
 ## Goals
 ### Primary Goal
@@ -38,5 +38,4 @@
 ## Inventory
 - None
 - age: 17
-
 

@@ -80,7 +80,7 @@
 ### A Nexus
 - desc: Well... you've reached an intersection of two passages, to the north and east, the passage brightens, while the darker hallway continues to the south.
 - exits: [ Exits: (n) (e) s w ]
-- entities: A creepy little crawling thing is scuttling along the floor at your feet.
+- entities: Someone's little pet dragon has gotten loose, and is sniffing about here.
 
 ### Behind The Temple Altar
 - desc: You are on a dirt path leading away from the Temple Altar which is south of here.  To the north, the path continues through the lush contryside of Midgaard towards the Dragonhelm Mountains far off to the north.
@@ -130,4 +130,52 @@
 - desc: The smell of worked metals and various quenching oils fills the room.  Every available space in the room including the ceiling is loaded with various equipment and weaponry.  There is a small note on the counter.
 - exits: [ Exits: s ]
 - entities: A Peacekeeper is standing here, ready to jump in at the first sign of trouble. | A weaponsmith is standing here.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
