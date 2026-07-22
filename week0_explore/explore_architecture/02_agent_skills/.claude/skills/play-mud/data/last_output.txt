@@ -1,0 +1,22 @@
+That player is not here.
+
+10H 100M 84V (news) (motd) > 
+---
+There doesn't seem to be anything here.
+
+10H 100M 84V (news) (motd) > 
+---
+You are 17 years old.
+You have 10(13) hit, 100(100) mana and 84(84) movement points.
+Your armor class is 100/10, and your alignment is 0.
+You have 2 exp, 0 gold coins, and 0 questpoints.
+You need 2498 exp to reach your next level.
+You have earned 0 quest points.
+You have completed 0 quests, and you are not on a quest at the moment.
+You have been playing for 0 days and 4 hours.
+This ranks you as Dummy the Apprentice of Magic (level 1).
+You are standing.
+You are hungry.
+You are thirsty.
+
+10H 100M 84V (news) (motd) > 

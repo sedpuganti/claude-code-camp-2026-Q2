@@ -4,3 +4,8 @@
 # Environment / secrets
 .env
 .env.local
+
+# Python virtualenv (shared at repo root across all python/ steps)
+.venv/
+__pycache__/
+*.pyc
