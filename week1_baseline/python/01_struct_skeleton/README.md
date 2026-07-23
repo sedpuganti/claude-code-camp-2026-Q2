@@ -1,4 +1,4 @@
-# 00 · Configuration (Python port)
+# 01 · Struct Skeleton (Python port)
 
 We want to able to manage all configurations from an external file eg. `~/.boukensha/settings.yaml`
 We want a dedicated class to handle configuration. eg. `boukensha.Config`
@@ -10,10 +10,9 @@ own LLM. week1_baseline only drives a single `player` task (the main loop), but
 a more advanced loop will assign different LLMs to different tasks. A task is
 either a "single-task" or a "multi-task" — the latter being a full agent.
 
-This is a 1:1 port of `week1_baseline/ruby/00_config` — same behaviour, same
-directory resolution, same config schema. Future steps (`01_...`, `02_...`,
-...) get their own snapshot folders under `week1_baseline/python/` the same
-way the Ruby side does.
+This is the Step 1 snapshot. It retains the Step 0 configuration behaviour and
+adds the lightweight Tool, Message, and Context structures from
+`week1_baseline/ruby/01_struct_skeleton`.
 
 ## Setup
 
@@ -27,15 +26,15 @@ python -m venv .venv
 Activate it (pick the one matching your shell):
 
 ```bash
-source .venv/bin/activate        # macOS/Linux, Git Bash on Windows  source /c/dev/claude-code-camp-2026-Q2/.venv/Scripts/activate
+source .venv/bin/activate        # macOS/Linux, Git Bash on Windows
 .venv\Scripts\activate.bat       # Windows cmd.exe
-.venv\Scripts\Activate.ps1       # Windows PowerShell 
+.venv\Scripts\Activate.ps1       # Windows PowerShell
 ```
 
 Then install this step's dependencies:
 
 ```bash
-pip install -r week1_baseline/python/00_config/requirements.txt
+pip install -r week1_baseline/python/01_struct_skeleton/requirements.txt
 ```
 
 Later steps will add their own `requirements.txt` — re-run `pip install -r
@@ -58,9 +57,45 @@ packages. Two are unavoidable here:
 | `boukensha/config.py` | `Config` class |
 | `boukensha/tasks/base.py` | abstract `Base` (provider/model + prompt resolution) |
 | `boukensha/tasks/player.py` | concrete `Player` (the main loop) |
+| `boukensha/tool.py` | registered agent capability and its callable handler |
+| `boukensha/message.py` | one conversation entry |
+| `boukensha/context.py` | system prompt, messages, and registered tools for a task |
 | `boukensha/__init__.py` | top-level package exports |
 | `prompts/system.md` | default system prompt shipped with the library |
 | `examples/example.py` | runnable smoke-test |
+
+---
+
+## Struct Skeleton
+
+`Tool` describes a capability available to the agent. It stores its name,
+agent-facing description, parameter schema, and Python handler. Registering a
+tool does not invoke it yet.
+
+`Message` stores a `role`, `content`, and optional `tool_use_id`. The latter
+will later link a tool result to the exact tool request that caused it.
+
+`Context` owns all state that will be sent to a future API call: the task
+class, system prompt, conversation history, and registered tools.
+
+```python
+from boukensha import Context, Tool
+from boukensha.tasks import Player
+
+ctx = Context(task=Player, system="You are a MUD player assistant.")
+ctx.register_tool(
+    Tool(
+        "look",
+        "Look around the current room",
+        {},
+        lambda: "You see a torch-lit corridor.",
+    )
+)
+ctx.add_message("user", "Look around.")
+```
+
+At this step, `Context` only holds state. Tool execution, API requests,
+message serialization, and token budgeting arrive in later snapshots.
 
 ---
 
@@ -144,29 +179,20 @@ mud:
 ## Run Example
 
 ```bash
-./week1_baseline/bin/python/00_config
+./week1_baseline/bin/python/01_struct_skeleton
 ```
 
 Expected output (values from your `.boukensha/`):
 
 ```
-=== Boukensha Step 0: Configuration ===
+=== Boukensha Step 1: Struct Skeleton ===
 
-Config dir:     /home/andrew/Sites/Claude-Code-Camp/.boukensha
-Tasks:          player
-
--- player task --
-Provider:       anthropic
-Model:          claude-haiku-4-5
-Prompt override?True
-System prompt:  You are a MUD player assistant. Use the tools available to y...
-
-MUD host:       localhost:4000
-MUD user:       dummy
-
-API key set?    True
-
-#<Boukensha::Config dir=/home/andrew/Sites/Claude-Code-Camp/.boukensha tasks=player>
+Config:   #<Boukensha::Config dir=/.../.boukensha tasks=player>
+Context:  #<Context task=player turns=2 tools=1>
+Tool:     #<Tool name=move description=Move the player in a direction (north, so params=['direction']>
+Messages:
+  #<Message role=user content=Explore north and tell me what you find....>
+  #<Message role=assistant content=Sure, let me head north and take a look....>
 ```
 
 ## Considerations

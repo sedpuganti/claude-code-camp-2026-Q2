@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
+
+venv_python="$repo_root/.venv/bin/python"
+if [ ! -x "$venv_python" ]; then
+  venv_python="$repo_root/.venv/Scripts/python.exe"
+fi
+
+cd "$script_dir/../../python/02_the_registry"
+"$venv_python" examples/example.py

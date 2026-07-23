@@ -1,0 +1,212 @@
+# Python Port Plan — 01 · Struct Skeleton
+
+## Goal
+
+Port only the **new Step 1 changes** from `week1_baseline/ruby/01_struct_skeleton`
+into `week1_baseline/python/01_struct_skeleton`. The Python Step 0 port has
+already been copied into the Step 1 directory, so it is the existing baseline
+and is not part of this porting work. Add the three lightweight data
+structures introduced by the Ruby step:
+
+- `boukensha.Tool` — a registered callable the agent may use.
+- `boukensha.Message` — one conversation entry.
+- `boukensha.Context` — all state needed for a future API call.
+
+This step is deliberately structural. It must not add an LLM client, execute
+tools, add token accounting, or introduce a test framework.
+
+## Reference files (source of truth — read these before porting)
+
+| Ruby file | Role |
+|---|---|
+| `week1_baseline/ruby/01_struct_skeleton/README.md` | Behavioural description and intended example output for the new structures |
+| `week1_baseline/ruby/01_struct_skeleton/lib/boukensha/tool.rb` | Four-field `Tool` struct and its compact display format |
+| `week1_baseline/ruby/01_struct_skeleton/lib/boukensha/message.rb` | Three-field `Message` struct and its compact display format |
+| `week1_baseline/ruby/01_struct_skeleton/lib/boukensha/context.rb` | `Context` initial state plus tool/message registration methods |
+| `week1_baseline/ruby/01_struct_skeleton/lib/boukensha.rb` | Public top-level surface for this snapshot |
+| `week1_baseline/ruby/01_struct_skeleton/examples/example.rb` | Runnable smoke test; port its flow and displayed information |
+| `week1_baseline/ruby/01_struct_skeleton/README.md` | Documentation to port into the Python README, with Python syntax and launcher path |
+| `week1_baseline/python/00_config/` | Reference only: the already-copied Python Step 0 baseline; use it solely to distinguish inherited code from Step 1 additions |
+| `week1_baseline/bin/python/00_config` | Established root-virtualenv launcher convention |
+| `week1_baseline/bin/ruby/01_struct_skeleton` | Ruby launcher pathing to preserve; it already resolves `bin/ruby/` → `ruby/01_struct_skeleton` correctly |
+
+## Existing baseline and scope
+
+`week1_baseline/python/01_struct_skeleton/` has already been created by
+copying `week1_baseline/python/00_config/`. Preserve that copied baseline as
+is: its configuration classes, task classes, prompt asset, requirements,
+README setup instructions, and existing example form the starting point.
+
+Do **not** copy it again and do **not** re-port Step 0. Make only the files
+needed for Ruby Step 1's delta:
+
+- add `boukensha/tool.py`, `boukensha/message.py`, and `boukensha/context.py`;
+- update `boukensha/__init__.py` to expose those new types;
+- replace/extend the copied `examples/example.py` with the Step 1 example;
+- update the copied `README.md` with Step 1’s new-structure documentation;
+- add `week1_baseline/bin/python/01_struct_skeleton`.
+
+Keep `requirements.txt` unchanged (`PyYAML` and `python-dotenv`). No new
+dependency is needed: Python's `dataclasses`, `typing`, and callable support
+are in the standard library.
+
+## Target file layout
+
+```
+week1_baseline/python/01_struct_skeleton/  # already copied from Python Step 0
+  requirements.txt                   # inherited unchanged
+  README.md                          # update only for Step 1 additions
+  boukensha/
+    __init__.py                      # exports Config, Tasks, Tool, Message, Context
+    config.py                        # inherited unchanged
+    tool.py                          # new Tool dataclass
+    message.py                       # new Message dataclass
+    context.py                       # new mutable Context class
+    tasks/
+      __init__.py                    # inherited unchanged
+      base.py                        # inherited unchanged
+      player.py                      # inherited unchanged
+  prompts/
+    system.md                        # inherited unchanged
+  examples/
+    example.py                       # Step 1 structural smoke test
+week1_baseline/bin/python/01_struct_skeleton  # new launcher
+```
+
+## Ruby → Python design mapping
+
+### `Boukensha::Tool` → `boukensha.Tool`
+
+Use a `@dataclass` with these attributes:
+
+| Ruby field | Python attribute | Type/meaning |
+|---|---|---|
+| `name` | `name` | `str`; key used by `Context.register_tool()` |
+| `description` | `description` | `str`; agent-visible help text |
+| `parameters` | `parameters` | `dict`; JSON-schema-like argument map |
+| `block` | `handler` | `Callable[..., str]`; named for Python clarity |
+
+The Ruby `Tool#to_s` output includes the description's first 41 characters
+and the parameter names. Implement `__str__` with the same concise shape,
+using Python's list representation for keys. `repr(tool)` should be equally
+useful; either alias it to `__str__` or explicitly provide the same display.
+Do not invoke `handler` in this step.
+
+### `Boukensha::Message` → `boukensha.Message`
+
+Use a `@dataclass` with:
+
+```python
+role: str
+content: str
+tool_use_id: str | None = None
+```
+
+Its `__str__` should retain the Ruby display semantics: include
+`[<tool_use_id>]` only when supplied, show the role and content, truncate the
+shown content to the first 61 characters, then append `...`. Do not validate
+roles in this step—the Ruby struct accepts any value and future API work will
+own protocol validation.
+
+### `Boukensha::Context` → `boukensha.Context`
+
+Implement a normal mutable class (not a dataclass) whose constructor takes:
+
+```python
+Context(task: type[Base], system: str | None = None)
+```
+
+Initialize `messages` to a fresh empty list and `tools` to a fresh empty dict
+for every instance. Expose the same small public API:
+
+| Ruby method | Python method | Behaviour |
+|---|---|---|
+| `register_tool(tool)` | `register_tool(tool)` | Store/replace a tool under `tool.name` |
+| `add_message(role, content, tool_use_id: nil)` | `add_message(role, content, tool_use_id=None)` | Append and return nothing (`None`) |
+| `tool_count` | `tool_count` property or zero-argument method | Number of registered tools |
+| `turn_count` | `turn_count` property or zero-argument method | Number of messages, including assistant and tool-result messages |
+| `to_s` | `__str__` | `#<Context task=player turns=2 tools=1>`-style summary |
+
+Use a `task_name()` classmethod on the supplied task class to populate the
+summary, as the Ruby version does. Keep `task`, `system`, `messages`, and
+`tools` accessible to callers. The Step 1 Ruby implementation does **not**
+yet have `token_budget`, description formatting, tool execution, or message
+serialization; leave all of those for later snapshots even though the README
+discusses their eventual direction.
+
+## Public package surface
+
+Update `boukensha/__init__.py` so callers can write:
+
+```python
+from boukensha import Config, Context, Message, Tool
+from boukensha.tasks import Player
+```
+
+Continue exporting the Step 0 configuration and task APIs. Avoid circular
+imports: `context.py` may use a type-only import of `Base` (or a general class
+type annotation) rather than importing the package root.
+
+## Example smoke test
+
+Port the Ruby example's sequence into `examples/example.py`:
+
+1. Set `BOUKENSHA_DIR` only if it is not already supplied, pointing at the
+   repository `.boukensha` fixture.
+2. Load `Config`, obtain the `player` settings, and resolve the player system
+   prompt with the existing Step 0 task API.
+3. Create `Context(task=Player, system=system_prompt)`.
+4. Register a `move` `Tool`, with the same description, parameter schema, and
+   lambda/handler result as the Ruby example.
+5. Add one user and one assistant message.
+6. Print the context, stored tool, and both messages in the same labelled
+   layout as the Ruby example, adjusted only for Python string rendering.
+
+The example is the acceptance check for this snapshot. It should demonstrate
+that context starts empty, registering the tool yields one stored tool,
+adding the two messages yields two turns, and the public display methods are
+readable. Do not add `pytest` or any other formal test suite.
+
+## Documentation and launcher
+
+Create a Step 1 `README.md` by carrying forward the Step 0 virtualenv setup
+at the top, changing the dependency-install path to
+`week1_baseline/python/01_struct_skeleton/requirements.txt`, and documenting
+the new Tool, Message, and Context APIs with Python examples. Keep the
+configuration material concise but present, since this snapshot still relies
+on it.
+
+Create `week1_baseline/bin/python/01_struct_skeleton` following the existing
+Python launcher convention:
+
+1. Resolve its own directory and then the repository root.
+2. Prefer `$repo_root/.venv/bin/python`; fall back to
+   `$repo_root/.venv/Scripts/python.exe` for Windows.
+3. Change directory to `week1_baseline/python/01_struct_skeleton`.
+4. Run `examples/example.py` with that interpreter.
+
+The launcher assumes the user has already created the one shared root
+virtualenv and installed this step's requirements, exactly as documented. Do
+not create or modify a venv at launcher runtime.
+
+## Verification
+
+From the repository root, after activating/creating the shared `.venv` and
+installing the Step 1 requirements, run:
+
+```bash
+./week1_baseline/bin/python/01_struct_skeleton
+```
+
+Confirm the output has the `=== Boukensha Step 1: Struct Skeleton ===`
+heading, a context summary for `player` with two turns and one tool, a `move`
+tool summary, and the two message summaries. Also run the existing Step 0
+launcher once to ensure the copied baseline still behaves independently.
+
+## Decisions carried forward
+
+- Keep the package name `boukensha`.
+- Use the single repository-root `.venv` for all Python snapshots.
+- Use `is_prompt_override` for the existing Step 0 boolean task API; no
+  related naming changes are introduced here.
+- Use the example as the only executable acceptance test.
