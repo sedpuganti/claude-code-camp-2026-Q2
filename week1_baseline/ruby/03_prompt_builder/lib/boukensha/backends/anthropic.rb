@@ -67,7 +67,7 @@ module Boukensha
       def to_payload(context, max_output_tokens: 1024)
         {
           model: @model,
-          system: context.system,
+          system: context.system ? [{ type: "text", text: context.system }] : nil,
           max_tokens: max_output_tokens,
           tools: to_tools(context.tools),
           messages: to_messages(context.messages)

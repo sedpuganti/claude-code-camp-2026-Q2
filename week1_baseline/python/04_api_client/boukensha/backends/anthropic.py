@@ -63,7 +63,7 @@ class Anthropic(Base):
     def to_payload(self, context, max_output_tokens=1024):
         return {
             "model": self.model,
-            "system": context.system,
+            "system": [{"type": "text", "text": context.system}] if context.system else None,
             "max_tokens": max_output_tokens,
             "tools": self.to_tools(context.tools),
             "messages": self.to_messages(context.messages),
