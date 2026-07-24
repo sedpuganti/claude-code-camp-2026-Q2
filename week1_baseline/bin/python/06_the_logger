@@ -8,5 +8,5 @@ if [ ! -x "$venv_python" ]; then
   venv_python="$repo_root/.venv/Scripts/python.exe"
 fi
 
-cd "$script_dir/../../python/05_agent_loop"
+cd "$script_dir/../../python/06_the_logger"
 "$venv_python" examples/example.py

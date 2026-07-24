@@ -1,4 +1,5 @@
 from .errors import ApiError
+from .logger import Logger
 
 
 class Agent:
@@ -12,12 +13,13 @@ class Agent:
 
     def __init__(
         self, context, registry, builder, client, task_settings=None,
-        max_iterations=None, max_output_tokens=None,
+        max_iterations=None, max_output_tokens=None, logger=None,
     ):
         self.context = context
         self.registry = registry
         self.builder = builder
         self.client = client
+        self.logger = logger if logger is not None else Logger()
         self.max_iterations = self._resolve_max_iterations(task_settings, max_iterations)
         self.max_output_tokens = self._resolve_max_output_tokens(task_settings, max_output_tokens)
         self.iteration = 0
@@ -25,19 +27,28 @@ class Agent:
     def run(self):
         while True:
             if self._iteration_limit_reached():
+                self.logger.limit_reached(
+                    kind="max_iterations", n=self.iteration, max=self.max_iterations
+                )
                 return self._wrap_up("max_iterations")
 
             self.iteration += 1
-            print(f"[iteration {self.iteration}/{self.max_iterations}]")
+            self.logger.iteration(n=self.iteration, max=self.max_iterations)
+            self.logger.prompt(messages=self.context.messages, tools=self.context.tools)
             options = {}
             if self.max_output_tokens is not None:
                 options["max_output_tokens"] = self.max_output_tokens
-            parsed = self.builder.parse_response(self.client.call(**options))
+            response = self.client.call(**options)
+            self.logger.raw(data=response)
+            parsed = self.builder.parse_response(response)
 
             if parsed["stop_reason"] == "tool_use":
-                self._handle_tool_calls(parsed["content"])
+                self._handle_tool_calls(parsed["content"], response)
             else:
-                return self._extract_text(parsed["content"])
+                text = self._extract_text(parsed["content"])
+                self._log_response(text, response)
+                self.logger.turn_end(reason="completed", iterations=self.iteration)
+                return text
 
     def _resolve_max_iterations(self, task_settings, explicit):
         if explicit is not None:
@@ -63,9 +74,14 @@ class Agent:
         try:
             response = self.client.call(tools=[], max_output_tokens=self.WRAP_UP_OUTPUT_TOKENS)
             text = self._extract_text(self.builder.parse_response(response)["content"])
-            return text if text.strip() else self._fallback_message(reason)
+            text = text if text.strip() else self._fallback_message(reason)
+            self._log_response(text, response)
+            self.logger.turn_end(reason=reason, iterations=self.iteration)
+            return text
         except ApiError:
-            return self._fallback_message(reason)
+            message = self._fallback_message(reason)
+            self.logger.turn_end(reason=reason, iterations=self.iteration)
+            return message
 
     def _fallback_message(self, reason):
         return (
@@ -79,17 +95,49 @@ class Agent:
             block.get("text", "") for block in content if block.get("type") == "text"
         )
 
-    def _handle_tool_calls(self, content):
+    def _handle_tool_calls(self, content, response):
+        tool_calls = [block for block in content if block.get("type") == "tool_use"]
+        reasoning = self._extract_text(content)
+        if not reasoning.strip():
+            suffix = "" if len(tool_calls) == 1 else "s"
+            reasoning = f"(tool use — {len(tool_calls)} call{suffix})"
+        self._log_response(reasoning, response)
         self.context.add_message("assistant", content)
-        for block in content:
-            if block.get("type") != "tool_use":
-                continue
+        for block in tool_calls:
             name = block["name"]
             args = block["input"]
-            print(f"  tool call -> {name}({args})")
-            result = self.registry.dispatch(name, args)
+            self.logger.tool_call(name=name, args=args)
+            try:
+                result = self.registry.dispatch(name, args)
+                self.logger.tool_result(name=name, result=result, ok=True)
+            except Exception as error:
+                result = f"ERROR: {error.__class__.__name__}: {error}"
+                self.logger.tool_result(
+                    name=name, result=result, ok=False, error=str(error)
+                )
             result_text = str(result)
-            print(f"  tool result -> {result_text[:61]}")
             self.context.add_message(
                 "tool_result", result_text, tool_use_id=block["id"]
             )
+
+    def _log_response(self, text, response):
+        self.logger.response(
+            text=text,
+            usage=self._normalized_usage(response),
+            stop_reason=response.get("stop_reason"),
+            task=self.context.task,
+            backend=self.builder.backend,
+        )
+
+    @staticmethod
+    def _normalized_usage(response):
+        if response.get("usage") is not None:
+            return response["usage"]
+        if response.get("usageMetadata") is not None:
+            return response["usageMetadata"]
+        usage = {
+            key: response[key]
+            for key in ("prompt_eval_count", "eval_count")
+            if key in response
+        }
+        return usage or None
