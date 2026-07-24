@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$SCRIPT_DIR/../../.."
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
 
-cd "$SCRIPT_DIR/../../python/08_the_repl_loop"
-"$REPO_ROOT/.venv/bin/python" examples/example.py
+venv_python="$repo_root/.venv/bin/python"
+if [ ! -x "$venv_python" ]; then
+  venv_python="$repo_root/.venv/Scripts/python.exe"
+fi
+
+cd "$script_dir/../../python/08_the_repl_loop"
+"$venv_python" examples/example.py

@@ -91,12 +91,12 @@ class Repl:
             print(f"\n[error] API call failed: {error}")
 
     def _banner(self):
-        key_status = "✓ API key set" if self.api_key and self.api_key.strip() else "✗ API key not set"
+        key_status = "[API key set]" if self.api_key and self.api_key.strip() else "[API key not set]"
         provider = self.provider or "default"
         model = self.model or "default"
         config_dir = self.config_dir or "(default)"
         if not self.config_dir or not os.path.isdir(self.config_dir):
-            config_dir = f"{config_dir}  ✗ directory not found"
+            config_dir = f"{config_dir}  [directory not found]"
         version = self.version or "?.?.?"
         return (
             f"\n╭── BOUKENSHA MUD Assistant (v{version}) ──╮\n"
