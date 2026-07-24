@@ -61,13 +61,15 @@ class Anthropic(Base):
         ]
 
     def to_payload(self, context, max_output_tokens=1024):
-        return {
+        payload = {
             "model": self.model,
-            "system": [{"type": "text", "text": context.system}] if context.system else None,
             "max_tokens": max_output_tokens,
             "tools": self.to_tools(context.tools),
             "messages": self.to_messages(context.messages),
         }
+        if context.system:
+            payload["system"] = [{"type": "text", "text": context.system}]
+        return payload
 
     def headers(self):
         return {

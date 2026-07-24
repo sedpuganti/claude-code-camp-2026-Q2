@@ -26,7 +26,7 @@ module Boukensha
       uri          = URI(@builder.url)
       http         = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = uri.scheme == "https"
-      http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+      http.verify_mode = ENV["INSECURE_SSL"] ? OpenSSL::SSL::VERIFY_NONE : OpenSSL::SSL::VERIFY_PEER
       # NOTE: Originally set to OpenSSL::X509::DEFAULT_CERT_FILE for macOS compatibility,
       # but that path (/usr/lib/ssl/cert.pem) doesn't exist on Linux/WSL2.
       # Omitting ca_file lets OpenSSL find system certs automatically on all platforms.

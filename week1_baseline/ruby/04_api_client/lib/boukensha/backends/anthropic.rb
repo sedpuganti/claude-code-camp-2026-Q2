@@ -65,13 +65,14 @@ module Boukensha
       end
 
       def to_payload(context, max_output_tokens: 1024)
-        {
+        payload = {
           model: @model,
-          system: context.system ? [{ type: "text", text: context.system }] : nil,
           max_tokens: max_output_tokens,
           tools: to_tools(context.tools),
           messages: to_messages(context.messages)
         }
+        payload[:system] = [{ type: "text", text: context.system }] if context.system
+        payload
       end
 
       def headers
