@@ -39,20 +39,22 @@ mcp_servers:
     command: mud-manager
     args:    [--mcp]
     prefix:  tbamud          # the daemon's `look` reaches the agent as tbamud__look
-    required: false          # gracefully skip if mud-manager is not installed
+    required: true          # gracefully skip if mud-manager is not installed
     env:
       MUD_HOST:     localhost
       MUD_PORT:     4000
-      MUD_NAME:     derrano
-      MUD_PASSWORD: testing
+      MUD_NAME:     dummy
+      MUD_PASSWORD: helloworld
 
   # Files. A third-party server nobody wrote boukensha code for — which is the
   # whole point: file access is a server you plug in, not a feature the agent
   # was born with. Edit the last arg to change what it can reach.
   #
   # required: false so a missing npx is a warning, not a dead agent.
-  filesystem:
-    command:  npx
-    args:     [-y, "@modelcontextprotocol/server-filesystem", /tmp]
-    prefix:   fs
-    required: false
+  # Disabled for the MUD lesson: `npx -y` may block startup while it downloads
+  # the package, and the player agent does not need filesystem access.
+  # filesystem:
+  #   command:  npx
+  #   args:     [-y, "@modelcontextprotocol/server-filesystem", /tmp]
+  #   prefix:   fs
+  #   required: false

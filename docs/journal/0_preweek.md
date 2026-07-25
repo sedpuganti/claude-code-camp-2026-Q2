@@ -20,7 +20,7 @@ The technical goal of of preweek (Explore) is to determine how well do Agent Arc
 - When the event triggers the player will use agentic loop to navigate to the different rooms and combat zones. its a stateless event architures. 
 
 ## Technical Observations
-
+- Intially mud-manager is starting fine, however, when there is commnad to boukensha it's staying idle and not finding the player or bakery. after debugging little more saw the issue that tbamud_look is not getting called. which could be issue. 
 
 ## Technical Conclusions
 

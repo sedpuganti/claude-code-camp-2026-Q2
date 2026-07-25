@@ -1,4 +1,5 @@
 from boukensha.mcp.client import Client
+from unittest.mock import mock_open, patch
 
 from .helper import MUD_MANAGER_ARGS, MUD_MANAGER_COMMAND, McpTestCase
 
@@ -55,3 +56,39 @@ class TestMcpClient(McpTestCase):
     def test_spawning_a_nonexistent_command_raises(self):
         with self.assertRaises(FileNotFoundError):
             Client.spawn("boukensha-no-such-mcp-server-xyz")
+
+
+class TestWindowsCommandResolution(McpTestCase):
+    def test_extensionless_shebang_uses_interpreter(self):
+        env = {"PATH": r"C:\Ruby40-x64\bin"}
+        with patch("boukensha.mcp.client.os.name", "nt"), patch.object(
+            Client, "_which_exact", return_value=r"C:\Ruby40-x64\bin\mud-manager"
+        ), patch(
+            "boukensha.mcp.client.shutil.which",
+            return_value=r"C:\Ruby40-x64\bin\ruby.exe",
+        ), patch(
+            "builtins.open", mock_open(read_data="#!/usr/bin/env ruby\n")
+        ):
+            cmd = Client._spawn_command("mud-manager", ["--mcp"], env)
+
+        self.assertEqual(
+            [
+                r"C:\Ruby40-x64\bin\ruby.exe",
+                r"C:\Ruby40-x64\bin\mud-manager",
+                "--mcp",
+            ],
+            cmd,
+        )
+
+
+class TestToolResultCompatibility(McpTestCase):
+    def test_reads_legacy_top_level_text_result(self):
+        client = object.__new__(Client)
+        client._request = lambda method, params: {
+            "result": {"text": "Market Square\\nExits: north", "isError": False}
+        }
+
+        self.assertEqual(
+            {"text": "Market Square\\nExits: north", "error": False},
+            client.call_tool("look"),
+        )

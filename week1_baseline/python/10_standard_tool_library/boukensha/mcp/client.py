@@ -1,6 +1,8 @@
 import itertools
 import json
 import os
+import shlex
+import shutil
 import subprocess
 
 
@@ -28,8 +30,8 @@ class Client:
         return cls(command, args=args, env=env)
 
     def __init__(self, command, args=(), env=None):
-        cmd = [str(command), *(str(a) for a in args)]
         spawn_env = {**os.environ, **{str(k): str(v) for k, v in (env or {}).items()}}
+        cmd = self._spawn_command(command, args, spawn_env)
         self._process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -45,14 +47,76 @@ class Client:
         self._handshake()
         self.tools = self._fetch_tools()
 
+    @staticmethod
+    def _spawn_command(command, args, env):
+        """Build argv for an MCP server, including extensionless shebang
+        executables on Windows.
+
+        Ruby gems commonly install commands such as ``mud-manager`` without a
+        file extension. POSIX shells execute their ``#!/usr/bin/env ruby``
+        shebang directly, but Windows CreateProcess cannot. Resolve the file
+        using PATH and explicitly launch the shebang interpreter there.
+        """
+        command = str(command)
+        argv = [command, *(str(a) for a in args)]
+        if os.name != "nt":
+            return argv
+
+        executable = Client._which_exact(command, env.get("PATH"))
+        if executable is None:
+            return argv
+        extension = os.path.splitext(executable)[1].lower()
+        if extension in (".cmd", ".bat"):
+            command_processor = env.get("COMSPEC") or shutil.which("cmd.exe")
+            return [command_processor, "/d", "/s", "/c", executable, *argv[1:]]
+        if extension:
+            return [executable, *argv[1:]]
+
+        try:
+            with open(executable, encoding="utf-8") as script:
+                first_line = script.readline().strip()
+        except (OSError, UnicodeError):
+            return argv
+
+        if not first_line.startswith("#!"):
+            return argv
+
+        shebang = shlex.split(first_line[2:].strip(), posix=True)
+        if not shebang:
+            return argv
+        if os.path.basename(shebang[0]) == "env" and len(shebang) > 1:
+            shebang = shebang[1:]
+
+        interpreter = shutil.which(shebang[0], path=env.get("PATH"))
+        if interpreter is None:
+            return argv
+        return [interpreter, *shebang[1:], executable, *argv[1:]]
+
+    @staticmethod
+    def _which_exact(command, path):
+        resolved = shutil.which(command, path=path)
+        if resolved is not None or os.path.dirname(command):
+            return resolved
+        for directory in (path or os.defpath).split(os.pathsep):
+            candidate = os.path.join(directory.strip('"'), command)
+            if os.path.isfile(candidate):
+                return candidate
+        return None
+
     def call_tool(self, name, arguments=None):
         res = self._request("tools/call", {"name": str(name), "arguments": arguments or {}})
         result = res.get("result")
         if result is None:
             raise Error(f"tools/call error: {res.get('error')!r}")
+        content = result.get("content") or []
         text = "\n".join(
-            c["text"] for c in (result.get("content") or []) if c.get("text") is not None
+            c["text"] for c in content if c.get("text") is not None
         )
+        # Early mud-manager builds returned a top-level `text` field before
+        # adopting MCP's content-block response shape. Keep those installed
+        # gem executables readable while preferring the standard shape.
+        if not content and result.get("text") is not None:
+            text = str(result["text"])
         return {"text": text, "error": bool(result.get("isError"))}
 
     def close(self):
@@ -104,7 +168,11 @@ class Client:
         while True:
             line = self._process.stdout.readline()
             if line == "":
-                raise Error("server closed the connection")
+                detail = self._process.stderr.read().strip()
+                message = "server closed the connection"
+                if detail:
+                    message += f": {detail}"
+                raise Error(message)
             line = line.strip()
             if not line:
                 continue
