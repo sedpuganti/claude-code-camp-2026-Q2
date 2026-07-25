@@ -1,7 +1,22 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$SCRIPT_DIR/../../.."
+REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+# Virtual environments use `bin/python` on Unix and
+# `Scripts/python.exe` on Windows (including Git Bash).
+if [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+  VENV_PYTHON="$REPO_ROOT/.venv/bin/python"
+elif [ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+  VENV_PYTHON="$REPO_ROOT/.venv/Scripts/python.exe"
+else
+  echo "Python virtual environment not found at $REPO_ROOT/.venv" >&2
+  echo "Create it with: python -m venv \"$REPO_ROOT/.venv\"" >&2
+  exit 1
+fi
 
 cd "$SCRIPT_DIR/../../python/10_standard_tool_library"
-"$REPO_ROOT/.venv/bin/python" examples/example.py
+# Keep the launcher self-contained: an old BOUKENSHA_DIR in the shell should
+# not silently select a different checkout's MCP configuration.
+export BOUKENSHA_DIR="$REPO_ROOT/.boukensha"
+exec "$VENV_PYTHON" examples/example.py
