@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$SCRIPT_DIR/../../.."
+
+if [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+  VENV_PYTHON="$REPO_ROOT/.venv/bin/python"
+elif [ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+  VENV_PYTHON="$REPO_ROOT/.venv/Scripts/python.exe"
+else
+  echo "Python virtual environment not found at $REPO_ROOT/.venv" >&2
+  exit 1
+fi
+
+cd "$SCRIPT_DIR/../../python/11_tui"
+exec "$VENV_PYTHON" examples/example.py "$@"
