@@ -10,3 +10,6 @@
 __pycache__/
 *.pyc
 *.gem
+
+# Local native Windows TUI dependency builds
+.tui_windows_build/

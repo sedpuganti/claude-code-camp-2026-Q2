@@ -58,3 +58,11 @@ mcp_servers:
   #   args:     [-y, "@modelcontextprotocol/server-filesystem", /tmp]
   #   prefix:   fs
   #   required: false
+  filesystem:
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - "C:/dev/TRY2/claude-code-camp-2026-Q2"
+    prefix: fs
+    required: false
