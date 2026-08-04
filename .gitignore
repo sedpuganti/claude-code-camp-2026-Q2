@@ -4,6 +4,7 @@
 # Environment / secrets
 .env
 .env.local
+.boukensha/
 
 # Python virtualenv (shared at repo root across all python/ steps)
 .venv/

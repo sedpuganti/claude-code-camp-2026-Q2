@@ -1,0 +1,47 @@
+require_relative "lib/boukensha/version"
+
+Gem::Specification.new do |spec|
+  spec.name        = "boukensha"
+  spec.version     = Boukensha::VERSION
+  spec.summary     = "BOUKENSHA — a tiny teaching framework for coding harnesses"
+  spec.description = "Step-by-step coding harness framework. " \
+                     "Set BOUKENSHA_PATH to load a specific lesson step, " \
+                     "or run with defaults to use the bundled release."
+  spec.authors     = ["Andrew Brown"]
+  spec.email       = ["andrew@exampro.co"]
+  spec.license     = "MIT"
+
+  spec.required_ruby_version = ">= 3.0"
+
+  # All files tracked in git, plus the bin/ executable and the bundled default
+  # prompts. The prompts are data the library reads at runtime
+  # (Config::PROMPTS_DIR), so an installed gem without them has a player with no
+  # system prompt and a judge that cannot answer.
+  spec.files = Dir["lib/**/*.rb"] + Dir["prompts/**/*.md"] + ["bin/boukensha"]
+
+  spec.bindir      = "bin"
+  spec.executables = ["boukensha"]
+
+  # The TUI requires only these three Charm libraries. Depending on the
+  # umbrella `charm` gem also installs unused Go extensions such as glamour,
+  # bubblezone, and ntcharts, whose source gems cannot build on native Windows.
+  spec.add_dependency "bubbletea"
+  spec.add_dependency "lipgloss"
+  spec.add_dependency "bubbles"
+
+  # Scores `look_candidates` locally (Extractors::Model). Resolves to a prebuilt
+  # platform gem — no compiler, no libonnxruntime install, no Python at runtime.
+  # Optional in practice: without the model artifact the extractor returns [].
+  spec.add_dependency "onnxruntime", "~> 0.11"
+
+  # The agent's room memory (Mud::Memory::Store). `require`d lazily inside the
+  # store — the same posture onnxruntime has — so a checkout without it still
+  # boots and simply explores without remembering.
+  spec.add_dependency "sqlite3", "~> 2.0"
+
+  spec.add_dependency "opentelemetry-api", "~> 1.0"
+  spec.add_dependency "opentelemetry-sdk", "~> 1.0"
+  spec.add_dependency "opentelemetry-exporter-otlp", "~> 0.30"
+
+  # open3, net/http, and json are stdlib. Users supply their own ANTHROPIC_API_KEY.
+end

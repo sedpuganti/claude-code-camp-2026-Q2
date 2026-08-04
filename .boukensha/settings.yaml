@@ -4,6 +4,52 @@ tasks:
     model: claude-haiku-4-5
     prompt_override:
       system: false
+    # Agent-selected actions. Room observation is intentionally handled by
+    # the room_survey hook below, so `look` and `check(score|exits)` are not
+    # exposed to the model.
+    allow:
+      - plan_route
+      - execute_route
+      - move
+      - poll
+      - flee
+      - set_position
+      - track
+      - examine
+      - "check(kind: inventory|equipment|gold|time|weather|levels|wimpy|toggle|where)"
+      - consider
+      - attack
+      - skill_strike
+      - say
+      - tell
+      - channel_say
+      - get_item
+      - drop_item
+      - put_item
+      - equip_item
+      - consume_item
+      - cast_spell
+      - use_magic_item
+      - shop
+      - practice
+      - save_character
+
+# Automatic MUD lifecycle work runs in a separate registry and therefore
+# needs its own permissions. These calls populate the room/player state given
+# to the model without letting the model issue raw look/score traffic.
+tools:
+  room_survey:
+    # The optional ONNX artifact is not bundled in this checkout. Explicitly
+    # select the supported no-model fallback so each run does not emit a
+    # misleading missing-manifest warning.
+    look_candidates:
+      extractor: none
+    allow:
+      - look
+      - "check(kind: score|exits)"
+      - poll
+      - consider
+      - examine
 mud:
   host: localhost
   port: 4000
@@ -66,3 +112,15 @@ mcp_servers:
       - "C:/dev/TRY2/claude-code-camp-2026-Q2"
     prefix: fs
     required: false
+
+# Export Boukensha spans to the local OpenTelemetry Collector. The collector
+# forwards them to Jaeger (and Tempo when the compare profile is running).
+observability:
+  otel:
+    enabled: true
+    capture_content: false
+    env:
+      OTEL_SERVICE_NAME: boukensha
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
